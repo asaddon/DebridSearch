@@ -1,20 +1,20 @@
-# Use the official Node.js image as the base image
-FROM node:alpine
-
-# Set the working directory in the container
+# Stage 1: Build dependencies
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
-
-# Install production dependencies
-RUN npm install --omit=dev
-
-# Copy all source code to the working directory
+RUN npm install --omit=optional
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 55771
+# Stage 2: Production image
+FROM node:18-alpine AS production
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev --omit=optional
+COPY --from=builder /app ./
 
-# Command to run the Node.js application
-ENTRYPOINT ["node", "server.js"]
+EXPOSE 55771
+CMD ["node", "index.js"]
+
+# Optional healthcheck
+#HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
+#CMD wget -qO- http://localhost:7000/ || exit 1
